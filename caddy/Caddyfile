@@ -1,9 +1,19 @@
 {
-	# Disable Caddy's HTTP admin API — not needed for L4-only proxy
+	# ── Admin API ─────────────────────────────────────────────
+	# Disabled for security in simple setups.  Re-enable if you
+	# need config reloads via the API.
 	admin off
 
+	# ── Automatic HTTPS via Cloudflare DNS challenge ──────────
+	# Uncomment below to enable auto-TLS using your Cloudflare
+	# API token.  This lets Caddy obtain certificates (including
+	# wildcards) WITHOUT opening ports 80/443 for ACME.
+	#
+	# acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+
+	# ── Layer 4 (TCP/UDP) proxy ───────────────────────────────
 	layer4 {
-		# ── Voice (UDP 9987) ──────────────────────────────────────
+		# Voice — UDP 9987
 		# Primary TeamSpeak port: carries all voice traffic.
 		udp/:9987 {
 			route {
@@ -11,7 +21,7 @@
 			}
 		}
 
-		# ── File Transfer (TCP 30033) ─────────────────────────────
+		# File Transfer — TCP 30033
 		# Used for uploading/downloading avatars, icons, and files.
 		:30033 {
 			route {
@@ -19,7 +29,7 @@
 			}
 		}
 
-		# ── Server Query (TCP 10011) ──────────────────────────────
+		# Server Query — TCP 10011
 		# Raw telnet-style admin interface.  Expose only if you
 		# need external tooling (e.g. TS3AudioBot, bots).
 		# Comment this block out to keep the query port internal.
@@ -30,3 +40,18 @@
 		}
 	}
 }
+
+# ── HTTPS site (optional) ────────────────────────────────────
+# Uncomment and customise to serve a web page or status panel
+# alongside the L4 proxy.  Requires the acme_dns line above
+# to be enabled and ports 80/443 published from the container.
+#
+# ts.example.com {
+#     # Wildcard: use *.example.com for a single cert covering
+#     # all subdomains (requires DNS challenge — see above).
+#     # tls {
+#     #     dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+#     # }
+#
+#     respond "TeamSpeak server is online." 200
+# }

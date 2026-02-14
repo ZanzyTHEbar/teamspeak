@@ -208,6 +208,75 @@ make clean         Remove volumes (DESTROYS DATA)
 
 ---
 
+## Automatic HTTPS with Cloudflare DNS (optional)
+
+The custom Caddy image ships with the
+[Cloudflare DNS module](https://caddyserver.com/docs/modules/dns.providers.cloudflare),
+so you can obtain TLS certificates — including
+[wildcard certificates](https://caddyserver.com/docs/automatic-https#wildcard-certificates)
+for `*.example.com` — using the DNS challenge. This means **ports 80 and 443
+do not need to be open** for ACME validation.
+
+### Setup
+
+1. Create a Cloudflare API token at
+   <https://dash.cloudflare.com/profile/api-tokens>.
+   The token needs **Zone > DNS > Edit** permission for your domain.
+
+2. Set the token in `.env`:
+
+   ```bash
+   CLOUDFLARE_API_TOKEN=your_token_here
+   ```
+
+3. Uncomment the `acme_dns` line in `caddy/Caddyfile`:
+
+   ```caddyfile
+   acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+   ```
+
+4. Add an HTTPS site block at the bottom of the Caddyfile (an example is
+   already there, commented out):
+
+   ```caddyfile
+   ts.example.com {
+       respond "TeamSpeak server is online." 200
+   }
+   ```
+
+   For a wildcard certificate, use `*.example.com` as the site address and
+   add a `tls` block with the DNS provider:
+
+   ```caddyfile
+   *.example.com {
+       tls {
+           dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+       }
+       respond "Hello from {http.request.host}" 200
+   }
+   ```
+
+5. Publish ports 80 and 443 from the Caddy container (add to
+   `docker-compose.yml` under the `caddy` service):
+
+   ```yaml
+   ports:
+     - "80:80/tcp"
+     - "443:443/tcp"
+     - "443:443/udp"   # HTTP/3 (QUIC)
+   ```
+
+6. Rebuild and restart:
+
+   ```bash
+   docker compose build && docker compose up -d
+   ```
+
+Caddy will automatically obtain and renew certificates from Let's Encrypt /
+ZeroSSL via Cloudflare DNS. No manual cert management required.
+
+---
+
 ## Customization
 
 ### Disabling the server query port
@@ -253,7 +322,7 @@ connect using `ts.example.com` (port 9987 is the default and can be omitted).
 .
 ├── caddy/
 │   ├── Caddyfile           # Caddy Layer 4 proxy configuration
-│   └── Dockerfile          # Builds Caddy with the L4 module
+│   └── Dockerfile          # Builds Caddy with L4 + Cloudflare DNS modules
 ├── docker-compose.yml      # Caddy + TeamSpeak (default)
 ├── docker-compose.simple.yml  # TeamSpeak only, no proxy
 ├── .env.example            # Template for environment variables
@@ -269,6 +338,8 @@ connect using `ts.example.com` (port 9987 is the default and can be omitted).
 - [TeamSpeak Docker Hub (official image)](https://hub.docker.com/_/teamspeak)
 - [Caddy L4 module — mholt/caddy-l4](https://github.com/mholt/caddy-l4)
 - [Caddy L4 server & proxy docs](https://github.com/mholt/caddy-l4/tree/master/docs)
+- [Caddy Automatic HTTPS & Wildcard Certificates](https://caddyserver.com/docs/automatic-https#wildcard-certificates)
+- [Caddy Cloudflare DNS module](https://caddyserver.com/docs/modules/dns.providers.cloudflare)
 - [Docker Engine install — Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 
 ## License

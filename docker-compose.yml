@@ -12,8 +12,6 @@
 #   10011/tcp — server query (optional; see Caddyfile)
 ###############################################################################
 
-# If you want to connet to netbird, you need to use host networking in docker.
-
 services:
   # ── Caddy reverse-proxy (Layer 4) ───────────────────────────
   caddy:
@@ -26,8 +24,12 @@ services:
       - "9987:9987/udp"
       - "30033:30033/tcp"
       - "10011:10011/tcp"
+    environment:
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
     networks:
       - ts-net
     depends_on:
@@ -93,4 +95,6 @@ networks:
 
 volumes:
   ts-data:
-  # db-data:   # uncomment when using MariaDB
+  caddy-data:      # TLS certs, ACME state
+  caddy-config:    # Caddy runtime config
+  # db-data:       # uncomment when using MariaDB
