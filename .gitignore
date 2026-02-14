@@ -1,0 +1,17 @@
+# ── Environment ──────────────────────────────────────────────
+.env
+
+# ── Docker / runtime ────────────────────────────────────────
+docker-compose.override.yml
+
+# ── OS junk ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── Editor / IDE ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace

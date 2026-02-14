@@ -1,0 +1,28 @@
+###############################################################################
+# TeamSpeak 3 Server — Direct (no reverse proxy)
+#
+# Use this variant when you don't need Caddy in front of TeamSpeak.
+# Ports are published directly from the TeamSpeak container.
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose -f docker-compose.simple.yml up -d
+#   docker compose -f docker-compose.simple.yml logs teamspeak
+###############################################################################
+
+services:
+  teamspeak:
+    image: teamspeak:3.13
+    container_name: ts-server
+    restart: unless-stopped
+    environment:
+      TS3SERVER_LICENSE: ${TS3SERVER_LICENSE:-accept}
+    ports:
+      - "9987:9987/udp"
+      - "30033:30033/tcp"
+      - "10011:10011/tcp"
+    volumes:
+      - ts-data:/var/ts3server/
+
+volumes:
+  ts-data:

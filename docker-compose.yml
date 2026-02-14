@@ -1,0 +1,96 @@
+###############################################################################
+# TeamSpeak 3 Server behind Caddy (Layer 4 TCP/UDP proxy)
+#
+# Usage:
+#   cp .env.example .env          # then edit .env
+#   docker compose up -d          # start everything
+#   docker compose logs teamspeak # grab the admin privilege key
+#
+# Ports exposed to the host (via Caddy):
+#   9987/udp  — voice
+#   30033/tcp — file transfer
+#   10011/tcp — server query (optional; see Caddyfile)
+###############################################################################
+
+# If you want to connet to netbird, you need to use host networking in docker.
+
+services:
+  # ── Caddy reverse-proxy (Layer 4) ───────────────────────────
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    container_name: ts-caddy
+    restart: unless-stopped
+    ports:
+      - "9987:9987/udp"
+      - "30033:30033/tcp"
+      - "10011:10011/tcp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - ts-net
+    depends_on:
+      teamspeak:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── TeamSpeak 3 Server ──────────────────────────────────────
+  teamspeak:
+    image: teamspeak:3.13
+    container_name: ts-server
+    restart: unless-stopped
+    environment:
+      TS3SERVER_LICENSE: ${TS3SERVER_LICENSE:-accept}
+    volumes:
+      - ts-data:/var/ts3server/
+    networks:
+      - ts-net
+    # No ports published — all traffic arrives through Caddy.
+
+  # ── MariaDB (optional — uncomment for large deployments) ────
+  # db:
+  #   image: mariadb:11
+  #   container_name: ts-db
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+  #     MYSQL_DATABASE: ${MYSQL_DATABASE:-teamspeak}
+  #     MYSQL_USER: ${MYSQL_USER:-teamspeak}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+  #   volumes:
+  #     - db-data:/var/lib/mysql
+  #   networks:
+  #     - ts-net
+  #   healthcheck:
+  #     test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # When enabling MariaDB, also add these env vars to the
+  # teamspeak service (or your .env file):
+  #
+  #   TS3SERVER_DB_PLUGIN: ts3db_mariadb
+  #   TS3SERVER_DB_SQLCREATEPATH: create_mariadb
+  #   TS3SERVER_DB_HOST: db
+  #   TS3SERVER_DB_USER: ${MYSQL_USER:-teamspeak}
+  #   TS3SERVER_DB_PASSWORD: ${MYSQL_PASSWORD}
+  #   TS3SERVER_DB_NAME: ${MYSQL_DATABASE:-teamspeak}
+  #   TS3SERVER_DB_WAITUNTILREADY: "30"
+  #
+  # And add to teamspeak.depends_on:
+  #   db:
+  #     condition: service_healthy
+
+networks:
+  ts-net:
+    driver: bridge
+
+volumes:
+  ts-data:
+  # db-data:   # uncomment when using MariaDB

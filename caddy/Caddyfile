@@ -1,0 +1,32 @@
+{
+	# Disable Caddy's HTTP admin API — not needed for L4-only proxy
+	admin off
+
+	layer4 {
+		# ── Voice (UDP 9987) ──────────────────────────────────────
+		# Primary TeamSpeak port: carries all voice traffic.
+		udp/:9987 {
+			route {
+				proxy udp/teamspeak:9987
+			}
+		}
+
+		# ── File Transfer (TCP 30033) ─────────────────────────────
+		# Used for uploading/downloading avatars, icons, and files.
+		:30033 {
+			route {
+				proxy teamspeak:30033
+			}
+		}
+
+		# ── Server Query (TCP 10011) ──────────────────────────────
+		# Raw telnet-style admin interface.  Expose only if you
+		# need external tooling (e.g. TS3AudioBot, bots).
+		# Comment this block out to keep the query port internal.
+		:10011 {
+			route {
+				proxy teamspeak:10011
+			}
+		}
+	}
+}
